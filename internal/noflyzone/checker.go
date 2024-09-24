@@ -1,7 +1,5 @@
 package noflyzone
 
-import "time"
-
 // Helper functions for geometry
 func min(a, b float64) float64 {
 	if a < b {
@@ -18,83 +16,107 @@ func max(a, b float64) float64 {
 }
 
 // Function to check if two line segments intersect
-func doLinesIntersect(l1, l2 Line) bool {
-	// Get the orientation of the triplet (p, q, r)
-	orientation := func(p, q, r Point) int {
-		val := (q.Lon-p.Lon)*(r.Lat-p.Lat) - (q.Lat-p.Lat)*(r.Lon-p.Lon)
-		if val == 0 {
-			return 0 // collinear
-		}
-		if val > 0 {
-			return 1 // clockwise
-		}
-		return 2 // counterclockwise
-	}
 
-	// Check if point q lies on segment pr
-	onSegment := func(p, q, r Point) bool {
-		return q.Lon <= max(p.Lon, r.Lon) && q.Lon >= min(p.Lon, r.Lon) &&
-			q.Lat <= max(p.Lat, r.Lat) && q.Lat >= min(p.Lat, r.Lat)
-	}
-
-	// Get orientations of the four triplets
-	o1 := orientation(l1.Start, l1.End, l2.Start)
-	o2 := orientation(l1.Start, l1.End, l2.End)
-	o3 := orientation(l2.Start, l2.End, l1.Start)
-	o4 := orientation(l2.Start, l2.End, l1.End)
-
-	// General case: the lines intersect
-	if o1 != o2 && o3 != o4 {
-		return true
-	}
-
-	// Special cases: collinear points
-	if o1 == 0 && onSegment(l1.Start, l2.Start, l1.End) {
-		return true
-	}
-	if o2 == 0 && onSegment(l1.Start, l2.End, l1.End) {
-		return true
-	}
-	if o3 == 0 && onSegment(l2.Start, l1.Start, l2.End) {
-		return true
-	}
-	if o4 == 0 && onSegment(l2.Start, l1.End, l2.End) {
-		return true
-	}
-
-	// If none of the cases matched, the lines do not intersect
-	return false
-}
-
-// Function to check if a path intersects a polygon
-func doesPathIntersectPolygon(path Line, polygon []Point) bool {
-	for i := 0; i < len(polygon); i++ {
-		// Get the next point (close the loop)
-		next := (i + 1) % len(polygon)
-		// Create a line for the current edge of the polygon
-		polygonEdge := Line{Start: polygon[i], End: polygon[next]}
-		// Check if the path intersects with the current edge
-		if doLinesIntersect(path, polygonEdge) {
+// IsPathInNoFlyZone checks if the path intersects any active no-fly zone.
+func IsPathInNoFlyZone(source, destination Point, noFlyZones []NoFlyZone) bool {
+	// Define the path as a line segment
+	path := Line{Start: source, End: destination}
+	// Loop through all no-fly zones
+	for _, zone := range noFlyZones {
+		if doesLineIntersectPolygon(path, zone) {
 			return true
 		}
 	}
 	return false
 }
 
-// IsPathInNoFlyZone checks if the path intersects any active no-fly zone.
-func IsPathInNoFlyZone(source, destination Point, noFlyZones []NoFlyZone, currentTime time.Time) bool {
-	// Define the path as a line segment
-	path := Line{Start: source, End: destination}
+func doesLineIntersectPolygon(line Line, noFlyZone NoFlyZone) bool {
+	polygon := noFlyZone.Polygon
+	n := len(polygon)
 
-	// Loop through all no-fly zones
-	for _, zone := range noFlyZones {
-		// Check if the no-fly zone is active
-		if currentTime.After(zone.StartTime) && currentTime.Before(zone.EndTime) {
-			// Check if the path intersects the no-fly zone polygon
-			if doesPathIntersectPolygon(path, zone.Polygon) {
-				return true
-			}
+	// Check if the line segment intersects with any edge of the polygon
+	for i := 0; i < n; i++ {
+		nextIndex := (i + 1) % n
+		if doIntersect(line.Start, line.End, polygon[i], polygon[nextIndex]) {
+			return true
 		}
 	}
+
+	// Check if the line segment's start or end points are inside the polygon
+	if isPointInPolygon(line.Start, polygon) || isPointInPolygon(line.End, polygon) {
+		return true
+	}
+
+	return false
+}
+
+func isPointInPolygon(p Point, polygon []Point) bool {
+	n := len(polygon)
+	if n < 3 {
+		return false
+	}
+
+	x, y := p.Lat, p.Lon
+	inside := false
+
+	p1x, p1y := polygon[0].Lat, polygon[0].Lon
+	for i := 1; i <= n; i++ {
+		p2x, p2y := polygon[i%n].Lat, polygon[i%n].Lon
+		if y > min(p1y, p2y) && y <= max(p1y, p2y) && x <= max(p1x, p2x) {
+			if p1y != p2y {
+				xinters := (y-p1y)*(p2x-p1x)/(p2y-p1y) + p1x
+				if p1x == p2x || x <= xinters {
+					inside = !inside
+				}
+			}
+		}
+		p1x, p1y = p2x, p2y
+	}
+
+	return inside
+}
+
+func onSegment(p, q, r Point) bool {
+	return q.Lat <= max(p.Lat, r.Lat) && q.Lat >= min(p.Lat, r.Lat) &&
+		q.Lon <= max(p.Lon, r.Lon) && q.Lon >= min(p.Lon, r.Lon)
+}
+
+func orientation(p, q, r Point) int {
+	val := (q.Lon-p.Lon)*(r.Lat-p.Lat) - (q.Lat-p.Lat)*(r.Lon-p.Lon)
+	if val == 0 {
+		return 0
+	} else if val > 0 {
+		return 1
+	} else {
+		return 2
+	}
+}
+
+func doIntersect(p1, q1, p2, q2 Point) bool {
+	o1 := orientation(p1, q1, p2)
+	o2 := orientation(p1, q1, q2)
+	o3 := orientation(p2, q2, p1)
+	o4 := orientation(p2, q2, q1)
+
+	if o1 != o2 && o3 != o4 {
+		return true
+	}
+
+	if o1 == 0 && onSegment(p1, p2, q1) {
+		return true
+	}
+
+	if o2 == 0 && onSegment(p1, q2, q1) {
+		return true
+	}
+
+	if o3 == 0 && onSegment(p2, p1, q2) {
+		return true
+	}
+
+	if o4 == 0 && onSegment(p2, q1, q2) {
+		return true
+	}
+
 	return false
 }

@@ -1,9 +1,5 @@
 package noflyzone
 
-import (
-	"time"
-)
-
 // Point represents a latitude/longitude coordinate.
 type Point struct {
 	Lat, Lon float64
@@ -17,6 +13,6 @@ type Line struct {
 // NoFlyZone represents a polygon with a time range when it is active.
 type NoFlyZone struct {
 	Polygon   []Point
-	StartTime time.Time
-	EndTime   time.Time
+	StartTime int64
+	EndTime   int64
 }
