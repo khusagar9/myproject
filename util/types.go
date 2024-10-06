@@ -1,4 +1,4 @@
-package noflyzone
+package util
 
 // Point represents a latitude/longitude coordinate.
 type Point struct {
@@ -10,8 +10,9 @@ type Line struct {
 	Start, End Point
 }
 
-// NoFlyZone represents a polygon with a time range when it is active.
-type NoFlyZone struct {
+// RestrictedZone represents a polygon with a time range when it is active.
+type RestrictedZone struct {
+	ID        string
 	Polygon   []Point
 	StartTime int64
 	EndTime   int64

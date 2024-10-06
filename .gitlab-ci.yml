@@ -1,0 +1,11 @@
+---
+include:
+  - project: "prs-sdp/devops/gitlab-tpl"
+    ref: "htx-pilot-sdp-24"
+    file: "golang.gitlab-ci.yml"
+
+variables:
+  GOLANG_VERSION: "1.22.1-bullseye"
+  BUSYBOX_VERSION: "1.36.0-glibc"
+  GO_BINARY_NAME: "h3d-drone-emulator"
+  DOCKER_BUILD_OPTS: "--build-arg BUSYBOX_IMAGE=${BUSYBOX_IMAGE}"

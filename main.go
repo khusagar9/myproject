@@ -1,81 +1,5 @@
 package main
 
-/*import (
-	"encoding/json"
-	"fmt"
-	"log"
-	"myproject/api"
-	"myproject/internal/noflyzone"
-	"myproject/models"
-)*/
-/*
-func main() {
-	client := api.NewClient()
-
-	requestBody := models.RequestBody{
-		CeInstance: models.CeInstance{
-			TemplateID: models.TemplateID{
-				Equals: []string{"no_fly_zone"},
-			}},
-		Offset:    0,
-		Limit:     1000,
-		Order:     "creation_date:asc",
-		WithTotal: true,
-	}
-
-	response, err := client.Post("https://pilot.sdpcore.apps.thalesdigital.io/custom_entity/v0/internal/instances/search", requestBody)
-	if err != nil {
-		log.Fatalf("Failed to get response: %v", err)
-	}
-
-	var result models.ApiResponse
-	if err := json.Unmarshal(response, &result); err != nil {
-		log.Fatalf("Failed to unmarshal response: %v", err)
-	}
-	var noFlyZones []noflyzone.NoFlyZone
-	for _, instance := range result.CeInstances {
-		var polygon []noflyzone.Point
-
-		if outer, ok := instance.Geometry.Coordinates.([]interface{}); ok {
-			if middle, ok := outer[0].([]interface{}); ok {
-				if inner, ok := middle[0].([]interface{}); ok {
-					for _, coordinate := range inner {
-						if firstCoordinate, ok := coordinate.([]interface{}); ok {
-							// Extract latitude and longitude from the first coordinate
-							if len(firstCoordinate) >= 2 {
-								longitude := firstCoordinate[0].(float64)
-								latitude := firstCoordinate[1].(float64)
-								polygon = append(polygon, noflyzone.Point{Lat: latitude, Lon: longitude})
-							}
-						}
-					}
-				}
-			}
-		}
-
-		noFlyZone := noflyzone.NoFlyZone{
-			Polygon:   polygon,
-			StartTime: instance.Data.ActivationStart.TimestampMs,
-			EndTime:   instance.Data.ActivationEnd.TimestampMs,
-		}
-		noFlyZones = append(noFlyZones, noFlyZone)
-	}
-
-	// Example source and destination points in Singapore
-	source := noflyzone.Point{Lat: 1.320000, Lon: 103.870000}
-	destination := noflyzone.Point{Lat: 1.410000, Lon: 103.940000}
-
-	//source := noflyzone.Point{Lat: 1.2500, Lon: 103.7000}
-	//destination := noflyzone.Point{Lat: 1.4500, Lon: 103.7500}
-
-	// Check if the path intersects any active no-fly zones
-	if noflyzone.IsPathInNoFlyZone(source, destination, noFlyZones) {
-		fmt.Println("The path intersects an active no-fly zone!")
-	} else {
-		fmt.Println("The path does not intersect any active no-fly zone.")
-	}
-}*/
-
 import (
 	"context"
 	"fmt"
@@ -87,13 +11,13 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
 
-	"myproject/config"
-	"myproject/controller"
-	"myproject/service"
-	//"gitlab.thalesdigital.io/prs-sdp/shared/libs/golang/sdp-common-backend.git/controller"
-	//"gitlab.thalesdigital.io/prs-sdp/shared/libs/golang/sdp-common-backend.git/log"
+	"h3d-drone-emulator/config"
+	"h3d-drone-emulator/controller"
+	"h3d-drone-emulator/service"
+
+	commonController "gitlab.thalesdigital.io/prs-sdp/shared/libs/golang/sdp-common-backend.git/controller"
+	"gitlab.thalesdigital.io/prs-sdp/shared/libs/golang/sdp-common-backend.git/log"
 )
 
 var (
@@ -114,17 +38,17 @@ func main() {
 		}
 	}()
 
-	/*if GitCommit != "" {
+	if GitCommit != "" {
 		log.Info("GitCommit : [%s]", GitCommit)
-	}*/
+	}
 
 	backendID := "h3d-drone-emulator"
 	log.Info("Starting [%s]", backendID)
 	log.Info(".................................. H3D DroneSubSystem Successfully Started ..................................")
 
-	//log.Info("Setting up Echo")
-	//e := commonController.CreateEcho()
-	e := echo.New()
+	log.Info("Setting up Echo")
+	e := commonController.CreateEcho()
+
 	// log.Info("Initializing Services")
 	service.InitService()
 
